@@ -94,5 +94,17 @@ namespace BLAPI3.Properties {
                 this["LogoPath"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool ToPacked {
+            get {
+                return ((bool)(this["ToPacked"]));
+            }
+            set {
+                this["ToPacked"] = value;
+            }
+        }
     }
 }

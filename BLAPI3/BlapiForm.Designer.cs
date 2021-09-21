@@ -79,8 +79,8 @@ namespace BLAPI3
             this.toolStripButtonOrders.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
             this.toolStripButtonOrders.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.toolStripButtonOrders.Name = "toolStripButtonOrders";
-            this.toolStripButtonOrders.Size = new System.Drawing.Size(75, 22);
-            this.toolStripButtonOrders.Text = "Load Orders";
+            this.toolStripButtonOrders.Size = new System.Drawing.Size(101, 22);
+            this.toolStripButtonOrders.Text = "Load Paid Orders";
             this.toolStripButtonOrders.Click += new System.EventHandler(this.toolStripButtonOrders_Click);
             // 
             // toolStripSeparator2

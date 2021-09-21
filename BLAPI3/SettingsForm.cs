@@ -14,6 +14,7 @@ namespace BLAPI3
             textBox4.Text = Properties.Settings.Default.TokenSecret;
             textBox5.Text = Properties.Settings.Default.FilesPath;
             textBox6.Text = Properties.Settings.Default.LogoPath;
+            checkBoxToPacked.Checked = Properties.Settings.Default.ToPacked;
 
         }
 
@@ -25,6 +26,7 @@ namespace BLAPI3
             Properties.Settings.Default.TokenSecret = textBox4.Text;
             Properties.Settings.Default.FilesPath = textBox5.Text;
             Properties.Settings.Default.LogoPath = textBox6.Text;
+            Properties.Settings.Default.ToPacked = checkBoxToPacked.Checked;
             Properties.Settings.Default.Save();
             Properties.Settings.Default.Upgrade();
             DialogResult = DialogResult.OK;
@@ -37,11 +39,6 @@ namespace BLAPI3
             Close();
         }
 
-        private void label1_Click(object sender, EventArgs e)
-        {
-
-        }
-
         private void button3_Click(object sender, EventArgs e)
         {
             var result = folderBrowserDialog1.ShowDialog();
@@ -49,26 +46,6 @@ namespace BLAPI3
             {
                 textBox5.Text = folderBrowserDialog1.SelectedPath;
             }
-        }
-
-        private void label11_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void SettingsForm_Load(object sender, EventArgs e)
-        {
-
-        }
-
-        private void textBox6_TextChanged(object sender, EventArgs e)
-        {
-
-        }
-
-        private void label10_Click(object sender, EventArgs e)
-        {
-
         }
 
         private void button4_Click(object sender, EventArgs e)
@@ -80,9 +57,5 @@ namespace BLAPI3
             }
         }
 
-        private void label6_Click(object sender, EventArgs e)
-        {
-
-        }
     }
 }

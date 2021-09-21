@@ -20,13 +20,17 @@ namespace BLAPI3
 
         private void toolStripButtonSlips_Click(object sender, EventArgs e)
         {
+            BLAPI_Processor pro = new BLAPI_Processor(oauth1_timestamp);
+
+            //fonts for pdf document
             BaseFont bfTimes = BaseFont.CreateFont(BaseFont.TIMES_ROMAN, BaseFont.CP1252, false);
             iTextSharp.text.Font f25 = new iTextSharp.text.Font(bfTimes, 25);
             iTextSharp.text.Font f20 = new iTextSharp.text.Font(bfTimes, 20);
+            iTextSharp.text.Font f16 = new iTextSharp.text.Font(bfTimes, 16);
 
+            //pdf filename
             string filename = "\\list" + DateTime.Now.ToString("_MM_dd") + ".pdf";
             string path = Properties.Settings.Default.FilesPath + filename;
-
             FileStream fs = new FileStream(path, FileMode.Create);
 
             Document document = new Document(PageSize.A4, 20, 20, 25, 25);
@@ -34,8 +38,9 @@ namespace BLAPI3
             document.AddCreator("BrickLink API paid orders list");
             document.Open();
 
+            //First page - list of paid orders
             PdfPTable table = new PdfPTable(5);
-            PdfPCell cell = new PdfPCell(new Phrase(DateTime.Now.ToString("dd/MM/yyyy")));
+            PdfPCell cell = new PdfPCell(new Phrase(DateTime.Now.ToString("MM/dd/yyyy")));
             cell.Colspan = 5;
             cell.HorizontalAlignment = 0;
 
@@ -50,20 +55,21 @@ namespace BLAPI3
             {
                 if (listView1.Items[i].Checked == true)
                 {
-                    table.AddCell(new PdfPCell(new Phrase(listView1.Items[i].SubItems[1].Text, f20)));
-                    table.AddCell(new PdfPCell(new Phrase(listView1.Items[i].SubItems[2].Text, f20)));
-                    table.AddCell(new PdfPCell(new Phrase(listView1.Items[i].SubItems[3].Text, f20)));
-                    table.AddCell(new PdfPCell(new Phrase(listView1.Items[i].SubItems[4].Text, f20)));
-                    table.AddCell(new PdfPCell(new Phrase(listView1.Items[i].SubItems[5].Text, f20)));
+                    table.AddCell(new PdfPCell(new Phrase(listView1.Items[i].SubItems[1].Text, f16)));
+                    table.AddCell(new PdfPCell(new Phrase(listView1.Items[i].SubItems[2].Text, f16)));
+                    table.AddCell(new PdfPCell(new Phrase(listView1.Items[i].SubItems[3].Text, f16)));
+                    table.AddCell(new PdfPCell(new Phrase(listView1.Items[i].SubItems[4].Text, f16)));
+                    table.AddCell(new PdfPCell(new Phrase(listView1.Items[i].SubItems[5].Text, f16)));
 
                 };
             }
             Paragraph p0 = new Paragraph();
-            p0.Font = f20;
+            p0.Font = f16;
             p0.Add(table);
             document.Add(p0);
             document.NewPage();
 
+            //For each order create and add to pdf file packing slip
             for (int i = 0; i < listView1.Items.Count; i++)
             {
                 if (listView1.Items[i].Checked == true)
@@ -81,7 +87,7 @@ namespace BLAPI3
                     QRCodeGenerator qrGenerator = new QRCodeGenerator();
                     QRCodeData qrCodeData = qrGenerator.CreateQrCode("https://www.bricklink.com/orderDetail.asp?ID=" + listView1.Items[i].SubItems[5].Text, QRCodeGenerator.ECCLevel.Q);
                     QRCode qrCode = new QRCode(qrCodeData);
-                    Bitmap qrCodeImage = qrCode.GetGraphic(20);
+                    Bitmap qrCodeImage = qrCode.GetGraphic(20, System.Drawing.Color.Black, System.Drawing.Color.White, (Bitmap)Bitmap.FromFile(Properties.Settings.Default.LogoPath));
                     var pdfImage = iTextSharp.text.Image.GetInstance(qrCodeImage, System.Drawing.Imaging.ImageFormat.Bmp);
                     pdfImage.ScaleAbsolute(150F, 150F);
                     p3.Add("\n\nScan for order details on bricklink.com:\n");
@@ -91,6 +97,13 @@ namespace BLAPI3
                     document.Add(p2);
                     document.Add(p3);
                     document.NewPage();
+
+                    //Move to "PACKED" status
+                    if (Properties.Settings.Default.ToPacked)
+                    {
+                        pro.BL_set_order_status(listView1.Items[i].SubItems[5].Text, "Packed");
+                        oauth1_timestamp = pro.oauth1_last_timestamp + 1;
+                    }
                 }
             }
 
@@ -121,7 +134,7 @@ namespace BLAPI3
             BLAPI_Processor pro = new BLAPI_Processor(oauth1_timestamp);
 
             listView1.Items.Clear();
-            string orders = pro.bl_orders_full_list();
+            string orders = pro.Bl_orders_full_list();
             JObject orders_json = JObject.Parse(orders);
             JArray orders_arr = (JArray)orders_json["data"];
             int row_n = 1;

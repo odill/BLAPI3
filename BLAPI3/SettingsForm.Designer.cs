@@ -53,11 +53,12 @@ namespace BLAPI3
             this.button4 = new System.Windows.Forms.Button();
             this.label11 = new System.Windows.Forms.Label();
             this.openFileDialog1 = new System.Windows.Forms.OpenFileDialog();
+            this.checkBoxToPacked = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(253, 344);
+            this.button1.Location = new System.Drawing.Point(253, 427);
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(75, 23);
             this.button1.TabIndex = 0;
@@ -67,7 +68,7 @@ namespace BLAPI3
             // 
             // button2
             // 
-            this.button2.Location = new System.Drawing.Point(172, 344);
+            this.button2.Location = new System.Drawing.Point(172, 427);
             this.button2.Name = "button2";
             this.button2.Size = new System.Drawing.Size(75, 23);
             this.button2.TabIndex = 1;
@@ -90,7 +91,6 @@ namespace BLAPI3
             this.label1.Size = new System.Drawing.Size(84, 15);
             this.label1.TabIndex = 3;
             this.label1.Text = "Consumer Key";
-            this.label1.Click += new System.EventHandler(this.label1_Click);
             // 
             // label2
             // 
@@ -159,7 +159,6 @@ namespace BLAPI3
             this.label6.Size = new System.Drawing.Size(177, 21);
             this.label6.TabIndex = 11;
             this.label6.Text = "Packing Slips Settings";
-            this.label6.Click += new System.EventHandler(this.label6_Click);
             // 
             // button3
             // 
@@ -197,11 +196,10 @@ namespace BLAPI3
             // 
             // textBox6
             // 
-            this.textBox6.Location = new System.Drawing.Point(120, 278);
+            this.textBox6.Location = new System.Drawing.Point(120, 361);
             this.textBox6.Name = "textBox6";
             this.textBox6.Size = new System.Drawing.Size(350, 23);
             this.textBox6.TabIndex = 20;
-            this.textBox6.TextChanged += new System.EventHandler(this.textBox6_TextChanged);
             // 
             // label9
             // 
@@ -214,16 +212,15 @@ namespace BLAPI3
             // label10
             // 
             this.label10.AutoSize = true;
-            this.label10.Location = new System.Drawing.Point(17, 286);
+            this.label10.Location = new System.Drawing.Point(17, 369);
             this.label10.Name = "label10";
             this.label10.Size = new System.Drawing.Size(34, 15);
             this.label10.TabIndex = 18;
             this.label10.Text = "Logo";
-            this.label10.Click += new System.EventHandler(this.label10_Click);
             // 
             // button4
             // 
-            this.button4.Location = new System.Drawing.Point(395, 307);
+            this.button4.Location = new System.Drawing.Point(395, 390);
             this.button4.Name = "button4";
             this.button4.Size = new System.Drawing.Size(75, 23);
             this.button4.TabIndex = 17;
@@ -235,16 +232,27 @@ namespace BLAPI3
             // 
             this.label11.AutoSize = true;
             this.label11.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.label11.Location = new System.Drawing.Point(17, 254);
+            this.label11.Location = new System.Drawing.Point(17, 337);
             this.label11.Name = "label11";
             this.label11.Size = new System.Drawing.Size(190, 21);
             this.label11.TabIndex = 16;
             this.label11.Text = "BrickLink Store Settings";
-            this.label11.Click += new System.EventHandler(this.label11_Click);
             // 
             // openFileDialog1
             // 
             this.openFileDialog1.FileName = "openFileDialog1";
+            // 
+            // checkBoxToPacked
+            // 
+            this.checkBoxToPacked.AutoSize = true;
+            this.checkBoxToPacked.Checked = true;
+            this.checkBoxToPacked.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkBoxToPacked.Location = new System.Drawing.Point(17, 264);
+            this.checkBoxToPacked.Name = "checkBoxToPacked";
+            this.checkBoxToPacked.Size = new System.Drawing.Size(315, 19);
+            this.checkBoxToPacked.TabIndex = 21;
+            this.checkBoxToPacked.Text = "Change status to PACKED after packing slips generated";
+            this.checkBoxToPacked.UseVisualStyleBackColor = true;
             // 
             // SettingsForm
             // 
@@ -252,7 +260,8 @@ namespace BLAPI3
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackgroundImageLayout = System.Windows.Forms.ImageLayout.None;
             this.CancelButton = this.button1;
-            this.ClientSize = new System.Drawing.Size(492, 379);
+            this.ClientSize = new System.Drawing.Size(492, 479);
+            this.Controls.Add(this.checkBoxToPacked);
             this.Controls.Add(this.textBox6);
             this.Controls.Add(this.label9);
             this.Controls.Add(this.label10);
@@ -280,7 +289,6 @@ namespace BLAPI3
             this.Name = "SettingsForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Settings";
-            this.Load += new System.EventHandler(this.SettingsForm_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -311,5 +319,6 @@ namespace BLAPI3
         private System.Windows.Forms.Button button4;
         private System.Windows.Forms.Label label11;
         private System.Windows.Forms.OpenFileDialog openFileDialog1;
+        private System.Windows.Forms.CheckBox checkBoxToPacked;
     }
 }
