@@ -132,12 +132,10 @@ namespace BLAPI3
             sform.Dispose();
         }
 
-
-        private void toolStripButtonOrders_Click(object sender, EventArgs e)
+        private void listViewOrders_load(BLAPI_Processor_status status)
         {
-            //Call BL API
             listViewOrders.Items.Clear();
-            string orders = processor.Bl_orders_full_list(BLAPI_Processor_status.BLAPI_Processor_PAID);
+            string orders = processor.Bl_orders_full_list(status);
             //orders is data in JSON format
             JObject orders_json = JObject.Parse(orders);
             JArray orders_arr = (JArray)orders_json["data"];
@@ -155,6 +153,32 @@ namespace BLAPI3
                 listViewOrders.Items.Add(listViewItem);
                 row_n++;
             }
+        }
+
+        private void toolStripButtonOrders_Click(object sender, EventArgs e)
+        {
+            //Call BL API
+            listViewOrders_load(BLAPI_Processor_status.BLAPI_Processor_PAID);
+        }
+
+        private void toolStripButtonPackedOrders_Click(object sender, EventArgs e)
+        {
+            listViewOrders_load(BLAPI_Processor_status.BLAPI_Processor_PACKED);
+        }
+
+        private void toolStripButtonToShipped_Click(object sender, EventArgs e)
+        {
+            //Move each order in teh listview to shipped 
+            for (int i = 0; i < listViewOrders.Items.Count; i++)
+            {
+                if (listViewOrders.Items[i].Checked == true)
+                {
+                    //Move to "SHIPPED" status
+                    processor.BL_set_order_status(listViewOrders.Items[i].SubItems[5].Text, BLAPI_Processor_status.BLAPI_Processor_SHIPPED);
+                }
+            }
+            string result_info = "Orders status changed to SHIPPED";
+            MessageBox.Show(result_info);
         }
     }
 }

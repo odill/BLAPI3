@@ -109,6 +109,7 @@ namespace BLAPI3
             this.toolStripButtonPackedOrders.Name = "toolStripButtonPackedOrders";
             this.toolStripButtonPackedOrders.Size = new System.Drawing.Size(116, 22);
             this.toolStripButtonPackedOrders.Text = "Load Packed Orders";
+            this.toolStripButtonPackedOrders.Click += new System.EventHandler(this.toolStripButtonPackedOrders_Click);
             // 
             // toolStripButtonToShipped
             // 
@@ -118,6 +119,7 @@ namespace BLAPI3
             this.toolStripButtonToShipped.Name = "toolStripButtonToShipped";
             this.toolStripButtonToShipped.Size = new System.Drawing.Size(102, 22);
             this.toolStripButtonToShipped.Text = "Move To Shipped";
+            this.toolStripButtonToShipped.Click += new System.EventHandler(this.toolStripButtonToShipped_Click);
             // 
             // listViewOrders
             // 

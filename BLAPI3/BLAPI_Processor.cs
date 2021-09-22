@@ -13,7 +13,8 @@ namespace BLAPI3
     enum BLAPI_Processor_status
     {
         BLAPI_Processor_PAID,
-        BLAPI_Processor_PACKED
+        BLAPI_Processor_PACKED,
+        BLAPI_Processor_SHIPPED
     }
 
     class BLAPI_Processor
@@ -210,6 +211,10 @@ namespace BLAPI3
             if (status == BLAPI_Processor_status.BLAPI_Processor_PACKED)
             {
                 body_s = "{\"field\" : \"status\", \"value\" : \"PACKED\"}";
+            }
+            if (status == BLAPI_Processor_status.BLAPI_Processor_SHIPPED)
+            {
+                body_s = "{\"field\" : \"status\", \"value\" : \"SHIPPED\"}";
             }
             var response = BL_HTTP_put_oauth1_request(url, "",
                                         timeStamp, signatureBaseString, body_s);
