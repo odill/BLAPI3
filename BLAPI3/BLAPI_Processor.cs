@@ -10,16 +10,38 @@ using System.Text;
 
 namespace BLAPI3
 {
+    enum BLAPI_Processor_status
+    {
+        BLAPI_Processor_PAID,
+        BLAPI_Processor_PACKED
+    }
+
     class BLAPI_Processor
     {
-        public int oauth1_last_timestamp  // property
-        { get; set; }
+        private int bl_oauth1_last_timestamp;
+        private string bl_consumer_key;
+        private string bl_consumer_secret;
+        private string bl_token_secret;
+        private string bl_token_value;
 
         public BLAPI_Processor(int timestamp)
         {
-            oauth1_last_timestamp = timestamp;
+            bl_oauth1_last_timestamp = timestamp;
+
+            //initialize OAuth1 secrets and values
+            BL_set_oauth1();
         }
-        private static string EscapeUriDataStringRfc3986(string s)
+
+        public void BL_set_oauth1()
+        {
+            //initialize OAuth1 secrets and values
+            bl_consumer_key = Properties.Settings.Default.ConsumerKey;
+            bl_consumer_secret = Properties.Settings.Default.ConsumerSecret;
+            bl_token_secret = Properties.Settings.Default.TokenSecret;
+            bl_token_value = Properties.Settings.Default.TokenValue;
+        }
+
+        private static string BL_escape_uri_rfc3986(string s)
         {
             var charsToEscape = new[] { "!", "*", "'", "(", ")" };
             var escaped = new StringBuilder(Uri.EscapeDataString(s));
@@ -30,15 +52,21 @@ namespace BLAPI3
             return escaped.ToString();
         }
 
-        private HttpWebResponse send_http_oauth1_request(string url, string parameters,
-                                            string consumerkey, string consumersecret,
-                                            string tokenvalue, string tokensecret,
-                                            string timestamp, string signature)
+        private HttpWebResponse BL_HTTP_put_oauth1_request(string url, string parameters,
+                                    string timestamp, string signature, string body)
         {
             var httpWebRequest = (HttpWebRequest)WebRequest.Create(url + parameters);
-            httpWebRequest.Method = "GET";
+            httpWebRequest.Method = "PUT";
+            httpWebRequest.ContentType = "application/json";
+            var body_b = Encoding.Default.GetBytes(body);
 
-            var key = EscapeUriDataStringRfc3986(consumersecret) + "&" + EscapeUriDataStringRfc3986(tokensecret);
+            httpWebRequest.ContentLength = body_b.Length;
+
+            var bodyStream = httpWebRequest.GetRequestStream();
+            bodyStream.Write(body_b, 0, body_b.Length);
+            bodyStream.Close();
+
+            var key = BL_escape_uri_rfc3986(bl_consumer_secret) + "&" + BL_escape_uri_rfc3986(bl_token_secret);
             var nonce = Convert.ToBase64String(Encoding.UTF8.GetBytes(timestamp));
 
             var signatureEncoding = new ASCIIEncoding();
@@ -50,16 +78,16 @@ namespace BLAPI3
                 var hashBytes = hmacsha1.ComputeHash(signatureBaseBytes);
                 signatureString = Convert.ToBase64String(hashBytes);
             }
-            signatureString = EscapeUriDataStringRfc3986(signatureString);
+            signatureString = BL_escape_uri_rfc3986(signatureString);
 
             string SimpleQuote(string s) => '"' + s + '"';
             var header =
                 "OAuth realm=" + SimpleQuote("") + "," +
-                "oauth_consumer_key=" + SimpleQuote(consumerkey) + "," +
+                "oauth_consumer_key=" + SimpleQuote(bl_consumer_key) + "," +
                 "oauth_nonce=" + SimpleQuote(nonce) + "," +
                 "oauth_signature_method=" + SimpleQuote("HMAC-SHA1") + "," +
                 "oauth_timestamp=" + SimpleQuote(timestamp) + "," +
-                "oauth_token=" + SimpleQuote(tokenvalue) + "," +
+                "oauth_token=" + SimpleQuote(bl_token_value) + "," +
                 "oauth_version=" + SimpleQuote("1.0") + "," +
                 "oauth_signature= " + SimpleQuote(signatureString);
             httpWebRequest.Headers.Add(HttpRequestHeader.Authorization, header);
@@ -69,33 +97,66 @@ namespace BLAPI3
             return response;
         }
 
+        private HttpWebResponse BL_HTTP_get_oauth1_request(string url, string parameters,
+                                            string timestamp, string signature)
+        {
+            var httpWebRequest = (HttpWebRequest)WebRequest.Create(url + parameters);
+            httpWebRequest.Method = "GET";
+
+            var key = BL_escape_uri_rfc3986(bl_consumer_secret) + "&" + BL_escape_uri_rfc3986(bl_token_secret);
+            var nonce = Convert.ToBase64String(Encoding.UTF8.GetBytes(timestamp));
+
+            var signatureEncoding = new ASCIIEncoding();
+            var keyBytes = signatureEncoding.GetBytes(key);
+            var signatureBaseBytes = signatureEncoding.GetBytes(signature);
+            string signatureString;
+            using (var hmacsha1 = new HMACSHA1(keyBytes))
+            {
+                var hashBytes = hmacsha1.ComputeHash(signatureBaseBytes);
+                signatureString = Convert.ToBase64String(hashBytes);
+            }
+            signatureString = BL_escape_uri_rfc3986(signatureString);
+
+            string SimpleQuote(string s) => '"' + s + '"';
+            var header =
+                "OAuth realm=" + SimpleQuote("") + "," +
+                "oauth_consumer_key=" + SimpleQuote(bl_consumer_key) + "," +
+                "oauth_nonce=" + SimpleQuote(nonce) + "," +
+                "oauth_signature_method=" + SimpleQuote("HMAC-SHA1") + "," +
+                "oauth_timestamp=" + SimpleQuote(timestamp) + "," +
+                "oauth_token=" + SimpleQuote(bl_token_value) + "," +
+                "oauth_version=" + SimpleQuote("1.0") + "," +
+                "oauth_signature= " + SimpleQuote(signatureString);
+            httpWebRequest.Headers.Add(HttpRequestHeader.Authorization, header);
+
+            var response = (HttpWebResponse)httpWebRequest.GetResponse();
+
+            return response;
+        }
+
+
         private string Bl_order_cost(string order_id)
         {
             string my_cost = "0";
-            string consumerKey = Properties.Settings.Default.ConsumerKey;
-            string consumerSecret = Properties.Settings.Default.ConsumerSecret;
-            string tokenSecret = Properties.Settings.Default.TokenSecret;
-            string tokenValue = Properties.Settings.Default.TokenValue;
 
+            //Got to read information about each lot in the order to calculate seller's cost
             string url = "https://api.bricklink.com/api/store/v1/orders/" + order_id + "/items";
-            oauth1_last_timestamp++;
+            bl_oauth1_last_timestamp++;
 
-            var timeStamp = oauth1_last_timestamp.ToString();
+            var timeStamp = bl_oauth1_last_timestamp.ToString();
             var nonce = Convert.ToBase64String(Encoding.UTF8.GetBytes(timeStamp));
 
-            var signatureBaseString = EscapeUriDataStringRfc3986("GET") + "&";
-            signatureBaseString += EscapeUriDataStringRfc3986(url.ToLower()) + "&";
-            signatureBaseString += EscapeUriDataStringRfc3986(
-                "oauth_consumer_key=" + EscapeUriDataStringRfc3986(consumerKey) + "&" +
-                "oauth_nonce=" + EscapeUriDataStringRfc3986(nonce) + "&" +
-                "oauth_signature_method=" + EscapeUriDataStringRfc3986("HMAC-SHA1") + "&" +
-                "oauth_timestamp=" + EscapeUriDataStringRfc3986(timeStamp) + "&" +
-                "oauth_token=" + EscapeUriDataStringRfc3986(tokenValue) + "&" +
-                "oauth_version=" + EscapeUriDataStringRfc3986("1.0"));
+            var signatureBaseString = BL_escape_uri_rfc3986("GET") + "&";
+            signatureBaseString += BL_escape_uri_rfc3986(url.ToLower()) + "&";
+            signatureBaseString += BL_escape_uri_rfc3986(
+                "oauth_consumer_key=" + BL_escape_uri_rfc3986(bl_consumer_key) + "&" +
+                "oauth_nonce=" + BL_escape_uri_rfc3986(nonce) + "&" +
+                "oauth_signature_method=" + BL_escape_uri_rfc3986("HMAC-SHA1") + "&" +
+                "oauth_timestamp=" + BL_escape_uri_rfc3986(timeStamp) + "&" +
+                "oauth_token=" + BL_escape_uri_rfc3986(bl_token_value) + "&" +
+                "oauth_version=" + BL_escape_uri_rfc3986("1.0"));
 
-            var response = send_http_oauth1_request(url, "",
-                                        consumerKey, consumerSecret,
-                                        tokenValue, tokenSecret,
+            var response = BL_HTTP_get_oauth1_request(url, "",
                                         timeStamp, signatureBaseString);
 
             var characterSet = ((HttpWebResponse)response).CharacterSet;
@@ -122,105 +183,61 @@ namespace BLAPI3
                         my_cost_all_lots += cost_per_lot * count_per_lot;
                     }
                 }
-                //(1.7289).ToString("#.##")
-                //string.Format("{0:0.00}", number)
                 my_cost = string.Format("{0:0.00}", my_cost_all_lots);
             }
             return my_cost;
         }
 
-        public void BL_set_order_status(string order_id, string status)
+        public void BL_set_order_status(string order_id, BLAPI_Processor_status status)
         {
-            string consumerKey = Properties.Settings.Default.ConsumerKey;
-            string consumerSecret = Properties.Settings.Default.ConsumerSecret;
-            string tokenSecret = Properties.Settings.Default.TokenSecret;
-            string tokenValue = Properties.Settings.Default.TokenValue;
-            
             string url = "https://api.bricklink.com/api/store/v1/orders/" + order_id +"/status";
 
-            oauth1_last_timestamp++;
-            var timeStamp = oauth1_last_timestamp.ToString();
+            bl_oauth1_last_timestamp++;
+            var timeStamp = bl_oauth1_last_timestamp.ToString();
             var nonce = Convert.ToBase64String(Encoding.UTF8.GetBytes(timeStamp));
 
-            var signatureBaseString = EscapeUriDataStringRfc3986("PUT") + "&";
-            signatureBaseString += EscapeUriDataStringRfc3986(url.ToLower()) + "&";
-            signatureBaseString += EscapeUriDataStringRfc3986(
-                "oauth_consumer_key=" + EscapeUriDataStringRfc3986(consumerKey) + "&" +
-                "oauth_nonce=" + EscapeUriDataStringRfc3986(nonce) + "&" +
-                "oauth_signature_method=" + EscapeUriDataStringRfc3986("HMAC-SHA1") + "&" +
-                "oauth_timestamp=" + EscapeUriDataStringRfc3986(timeStamp) + "&" +
-                "oauth_token=" + EscapeUriDataStringRfc3986(tokenValue) + "&" +
-                "oauth_version=" + EscapeUriDataStringRfc3986("1.0"));
+            var signatureBaseString = BL_escape_uri_rfc3986("PUT") + "&";
+            signatureBaseString += BL_escape_uri_rfc3986(url.ToLower()) + "&";
+            signatureBaseString += BL_escape_uri_rfc3986(
+                "oauth_consumer_key=" + BL_escape_uri_rfc3986(bl_consumer_key) + "&" +
+                "oauth_nonce=" + BL_escape_uri_rfc3986(nonce) + "&" +
+                "oauth_signature_method=" + BL_escape_uri_rfc3986("HMAC-SHA1") + "&" +
+                "oauth_timestamp=" + BL_escape_uri_rfc3986(timeStamp) + "&" +
+                "oauth_token=" + BL_escape_uri_rfc3986(bl_token_value) + "&" +
+                "oauth_version=" + BL_escape_uri_rfc3986("1.0"));
 
-            var httpWebRequest = (HttpWebRequest)WebRequest.Create(url);
-            httpWebRequest.Method = "PUT";
-            httpWebRequest.ContentType = "application/json";
-            string body_s = "{\"field\" : \"status\", \"value\" : \"PACKED\"}";
-            var body_b = Encoding.Default.GetBytes(body_s);
-
-            httpWebRequest.ContentLength = body_b.Length;
-
-            var bodyStream = httpWebRequest.GetRequestStream();
-            bodyStream.Write(body_b, 0, body_b.Length);
-            bodyStream.Close();
-
-            var key = EscapeUriDataStringRfc3986(consumerSecret) + "&" + EscapeUriDataStringRfc3986(tokenSecret);
-
-            var signatureEncoding = new ASCIIEncoding();
-            var keyBytes = signatureEncoding.GetBytes(key);
-            var signatureBaseBytes = signatureEncoding.GetBytes(signatureBaseString);
-            string signatureString;
-            using (var hmacsha1 = new HMACSHA1(keyBytes))
+            string body_s = "";
+            if (status == BLAPI_Processor_status.BLAPI_Processor_PACKED)
             {
-                var hashBytes = hmacsha1.ComputeHash(signatureBaseBytes);
-                signatureString = Convert.ToBase64String(hashBytes);
+                body_s = "{\"field\" : \"status\", \"value\" : \"PACKED\"}";
             }
-            signatureString = EscapeUriDataStringRfc3986(signatureString);
-
-            string SimpleQuote(string s) => '"' + s + '"';
-            var header =
-                "OAuth realm=" + SimpleQuote("") + "," +
-                "oauth_consumer_key=" + SimpleQuote(consumerKey) + "," +
-                "oauth_nonce=" + SimpleQuote(nonce) + "," +
-                "oauth_signature_method=" + SimpleQuote("HMAC-SHA1") + "," +
-                "oauth_timestamp=" + SimpleQuote(timeStamp) + "," +
-                "oauth_token=" + SimpleQuote(tokenValue) + "," +
-                "oauth_version=" + SimpleQuote("1.0") + "," +
-                "oauth_signature= " + SimpleQuote(signatureString);
-            httpWebRequest.Headers.Add(HttpRequestHeader.Authorization, header);
-
-            var response = (HttpWebResponse)httpWebRequest.GetResponse();
-
+            var response = BL_HTTP_put_oauth1_request(url, "",
+                                        timeStamp, signatureBaseString, body_s);
+            //Do not process response. 
+            //TO DO: add response status code processing
         }
 
         private string Bl_order_info(string order_id)
         {
-            string consumerKey = Properties.Settings.Default.ConsumerKey;
-            string consumerSecret = Properties.Settings.Default.ConsumerSecret;
-            string tokenSecret = Properties.Settings.Default.TokenSecret;
-            string tokenValue = Properties.Settings.Default.TokenValue;
-
             string url = "https://api.bricklink.com/api/store/v1/orders/" + order_id;
 
-            oauth1_last_timestamp++;
-            var timeStamp = oauth1_last_timestamp.ToString();
+            bl_oauth1_last_timestamp++;
+            var timeStamp = bl_oauth1_last_timestamp.ToString();
             var nonce = Convert.ToBase64String(Encoding.UTF8.GetBytes(timeStamp));
 
-            var signatureBaseString = EscapeUriDataStringRfc3986("GET") + "&";
-            signatureBaseString += EscapeUriDataStringRfc3986(url.ToLower()) + "&";
-            signatureBaseString += EscapeUriDataStringRfc3986(
-                "oauth_consumer_key=" + EscapeUriDataStringRfc3986(consumerKey) + "&" +
-                "oauth_nonce=" + EscapeUriDataStringRfc3986(nonce) + "&" +
-                "oauth_signature_method=" + EscapeUriDataStringRfc3986("HMAC-SHA1") + "&" +
-                "oauth_timestamp=" + EscapeUriDataStringRfc3986(timeStamp) + "&" +
-                "oauth_token=" + EscapeUriDataStringRfc3986(tokenValue) + "&" +
-                "oauth_version=" + EscapeUriDataStringRfc3986("1.0"));
+            var signatureBaseString = BL_escape_uri_rfc3986("GET") + "&";
+            signatureBaseString += BL_escape_uri_rfc3986(url.ToLower()) + "&";
+            signatureBaseString += BL_escape_uri_rfc3986(
+                "oauth_consumer_key=" + BL_escape_uri_rfc3986(bl_consumer_key) + "&" +
+                "oauth_nonce=" + BL_escape_uri_rfc3986(nonce) + "&" +
+                "oauth_signature_method=" + BL_escape_uri_rfc3986("HMAC-SHA1") + "&" +
+                "oauth_timestamp=" + BL_escape_uri_rfc3986(timeStamp) + "&" +
+                "oauth_token=" + BL_escape_uri_rfc3986(bl_token_value) + "&" +
+                "oauth_version=" + BL_escape_uri_rfc3986("1.0"));
 
-            var response = send_http_oauth1_request(url, "",
-                                        consumerKey, consumerSecret,
-                                        tokenValue, tokenSecret,
+            var response = BL_HTTP_get_oauth1_request(url, "",
                                         timeStamp, signatureBaseString);
-
+            //Process response, build JSON object about this order
             var characterSet = ((HttpWebResponse)response).CharacterSet;
             var responsestream = response.GetResponseStream();
             var responseEncoding = characterSet == ""
@@ -250,38 +267,41 @@ namespace BLAPI3
             return json_response;
         }
 
-        private IEnumerable<string> Bl_orders_id_list()
+        private IEnumerable<string> Bl_orders_id_list(BLAPI_Processor_status status)
         {
-            string consumerKey = Properties.Settings.Default.ConsumerKey;
-            string consumerSecret = Properties.Settings.Default.ConsumerSecret;
-            string tokenSecret = Properties.Settings.Default.TokenSecret;
-            string tokenValue = Properties.Settings.Default.TokenValue;
-
+            //returns list of received order_id in requested status
             const string url = "https://api.bricklink.com/api/store/v1/orders";
             string param1 = "direction=in";
-            string param2 = "status=paid";
+            string param2 = "";
+            if (status == BLAPI_Processor_status.BLAPI_Processor_PAID)
+            {
+                param2 = "status=paid";
+            }
+            if (status == BLAPI_Processor_status.BLAPI_Processor_PACKED)
+            {
+                param2 = "status=packed";
+            }
 
-            oauth1_last_timestamp++;
-            var timeStamp = oauth1_last_timestamp.ToString();
-            var nonce = Convert.ToBase64String(Encoding.UTF8.GetBytes(timeStamp));
+            bl_oauth1_last_timestamp++;
+            var timestamp = bl_oauth1_last_timestamp.ToString();
+            var nonce = Convert.ToBase64String(Encoding.UTF8.GetBytes(timestamp));
 
-            var signatureBaseString = EscapeUriDataStringRfc3986("GET") + "&";
-            signatureBaseString += EscapeUriDataStringRfc3986(url.ToLower()) + "&";
-            signatureBaseString += EscapeUriDataStringRfc3986(
+            //calculate signature using nonce
+            var signatureBaseString = BL_escape_uri_rfc3986("GET") + "&";
+            signatureBaseString += BL_escape_uri_rfc3986(url.ToLower()) + "&";
+            signatureBaseString += BL_escape_uri_rfc3986(
                 param1 + "&" +
-                "oauth_consumer_key=" + EscapeUriDataStringRfc3986(consumerKey) + "&" +
-                "oauth_nonce=" + EscapeUriDataStringRfc3986(nonce) + "&" +
-                "oauth_signature_method=" + EscapeUriDataStringRfc3986("HMAC-SHA1") + "&" +
-                "oauth_timestamp=" + EscapeUriDataStringRfc3986(timeStamp) + "&" +
-                "oauth_token=" + EscapeUriDataStringRfc3986(tokenValue) + "&" +
-                "oauth_version=" + EscapeUriDataStringRfc3986("1.0") + "&" + param2);
+                "oauth_consumer_key=" + BL_escape_uri_rfc3986(bl_consumer_key) + "&" +
+                "oauth_nonce=" + BL_escape_uri_rfc3986(nonce) + "&" +
+                "oauth_signature_method=" + BL_escape_uri_rfc3986("HMAC-SHA1") + "&" +
+                "oauth_timestamp=" + BL_escape_uri_rfc3986(timestamp) + "&" +
+                "oauth_token=" + BL_escape_uri_rfc3986(bl_token_value) + "&" +
+                "oauth_version=" + BL_escape_uri_rfc3986("1.0") + "&" + param2);
 
 
-            var response = send_http_oauth1_request(url, "?direction=in&status=paid",
-                                        consumerKey, consumerSecret,
-                                        tokenValue, tokenSecret,
-                                        timeStamp, signatureBaseString);
-
+            var response = BL_HTTP_get_oauth1_request(url, "?direction=in&" + param2,
+                                        timestamp, signatureBaseString);
+            //Process response. Extract "order_id" data from JSON into strings list
             var characterSet = ((HttpWebResponse)response).CharacterSet;
             var responsestream = response.GetResponseStream();
             var responseEncoding = characterSet == ""
@@ -299,17 +319,18 @@ namespace BLAPI3
                 orders =
                     from token in json["data"]
                     select (string)token["order_id"];
-
             }
             return orders;
         }
 
-        public string Bl_orders_full_list()
+        public string Bl_orders_full_list(BLAPI_Processor_status status)
         {
             var first = true;
+
+            //Build JSON string with information for all orders with requested status
             string full_list_json = "{ \"data\": [";
 
-            var order_id_list = Bl_orders_id_list();
+            var order_id_list = Bl_orders_id_list(status);
             foreach (var order_id in order_id_list)
             {
                 if (!first)
