@@ -159,32 +159,39 @@ namespace BLAPI3
 
             var response = BL_HTTP_get_oauth1_request(url, "",
                                         timeStamp, signatureBaseString);
-
-            var characterSet = ((HttpWebResponse)response).CharacterSet;
-            var responsestream = response.GetResponseStream();
-            var responseEncoding = characterSet == ""
-               ? Encoding.UTF8
-               : Encoding.GetEncoding(characterSet ?? "utf-8");
-
-            using (responsestream)
+            var httpcode = response.StatusCode;
+            if (httpcode == HttpStatusCode.OK)
             {
-                var reader = new StreamReader(responsestream, responseEncoding);
-                var result = reader.ReadToEnd();
+                var characterSet = ((HttpWebResponse)response).CharacterSet;
+                var responsestream = response.GetResponseStream();
+                var responseEncoding = characterSet == ""
+                    ? Encoding.UTF8
+                    : Encoding.GetEncoding(characterSet ?? "utf-8");
 
-                //deserialize 
-                JObject json = JObject.Parse(result);
-                JArray batches_arr = (JArray)json["data"];
-                double my_cost_all_lots = 0;
-                foreach (var item_arr in batches_arr)
+                using (responsestream)
                 {
-                    foreach (var item in item_arr)
+                    var reader = new StreamReader(responsestream, responseEncoding);
+                    var result = reader.ReadToEnd();
+
+                    //deserialize 
+                    JObject json = JObject.Parse(result);
+                    decimal code = (decimal)json["meta"]["code"];
+                    if (code == 200)
                     {
-                        double cost_per_lot = (double)item["order_cost"];
-                        int count_per_lot = (int)item["quantity"];
-                        my_cost_all_lots += cost_per_lot * count_per_lot;
+                        JArray batches_arr = (JArray)json["data"];
+                        double my_cost_all_lots = 0;
+                        foreach (var item_arr in batches_arr)
+                        {
+                            foreach (var item in item_arr)
+                            {
+                                double cost_per_lot = (double)item["order_cost"];
+                                int count_per_lot = (int)item["quantity"];
+                                my_cost_all_lots += cost_per_lot * count_per_lot;
+                            }
+                        }
+                        my_cost = string.Format("{0:0.00}", my_cost_all_lots);
                     }
                 }
-                my_cost = string.Format("{0:0.00}", my_cost_all_lots);
             }
             return my_cost;
         }
@@ -218,7 +225,7 @@ namespace BLAPI3
             }
             var response = BL_HTTP_put_oauth1_request(url, "",
                                         timeStamp, signatureBaseString, body_s);
-            //Do not process response. 
+            //Missing response status check. 
             //TO DO: add response status code processing
         }
 
@@ -242,32 +249,40 @@ namespace BLAPI3
 
             var response = BL_HTTP_get_oauth1_request(url, "",
                                         timeStamp, signatureBaseString);
-            //Process response, build JSON object about this order
-            var characterSet = ((HttpWebResponse)response).CharacterSet;
-            var responsestream = response.GetResponseStream();
-            var responseEncoding = characterSet == ""
-                    ? Encoding.UTF8
-                    : Encoding.GetEncoding(characterSet ?? "utf-8");
-
+            var httpcode = response.StatusCode;
             string json_response = "";
-            using (responsestream)
+
+            if (httpcode == HttpStatusCode.OK)
             {
-                var reader = new StreamReader(responsestream, responseEncoding);
-                var result = reader.ReadToEnd();
+                //Process response, build JSON object about this order
+                var characterSet = ((HttpWebResponse)response).CharacterSet;
+                var responsestream = response.GetResponseStream();
+                var responseEncoding = characterSet == ""
+                        ? Encoding.UTF8
+                        : Encoding.GetEncoding(characterSet ?? "utf-8");
 
-                //deserialize 
-                JObject json = JObject.Parse(result);
-                string name = json["data"]["shipping"]["address"]["name"]["full"].ToString();
-                string total = json["data"]["disp_cost"]["grand_total"].ToString();
-                float total_f = float.Parse(total, CultureInfo.InvariantCulture.NumberFormat);
-                total = string.Format("{0:0.00}", total_f);
+                using (responsestream)
+                {
+                    var reader = new StreamReader(responsestream, responseEncoding);
+                    var result = reader.ReadToEnd();
+                    //deserialize 
+                    JObject json = JObject.Parse(result);
+                    decimal code = (decimal)json["meta"]["code"];
+                    if (code == 200)
+                    {
+                        string name = json["data"]["shipping"]["address"]["name"]["full"].ToString();
+                        string total = json["data"]["disp_cost"]["grand_total"].ToString();
+                        float total_f = float.Parse(total, CultureInfo.InvariantCulture.NumberFormat);
+                        total = string.Format("{0:0.00}", total_f);
 
-                //calculate sellers cost
-                string cost = Bl_order_cost(order_id);
+                        //calculate sellers cost
+                        string cost = Bl_order_cost(order_id);
 
-                json_response = "{ \"name\":\"" + name + "\", \"total\":\"" + total
-                           + "\", \"my_cost\":\"" + cost + "\", \"order_id\":\"" + order_id + "\"}";
+                        json_response = "{ \"name\":\"" + name + "\", \"total\":\"" + total
+                               + "\", \"my_cost\":\"" + cost + "\", \"order_id\":\"" + order_id + "\"}";
 
+                    }
+                }
             }
             return json_response;
         }
@@ -307,23 +322,31 @@ namespace BLAPI3
             var response = BL_HTTP_get_oauth1_request(url, "?direction=in&" + param2,
                                         timestamp, signatureBaseString);
             //Process response. Extract "order_id" data from JSON into strings list
-            var characterSet = ((HttpWebResponse)response).CharacterSet;
-            var responsestream = response.GetResponseStream();
-            var responseEncoding = characterSet == ""
-               ? Encoding.UTF8
-               : Encoding.GetEncoding(characterSet ?? "utf-8");
+            var httpcode = response.StatusCode;
+            IEnumerable<string> orders = Enumerable.Empty<string>();
 
-            IEnumerable<string> orders;
-            using (responsestream)
+            if (httpcode == HttpStatusCode.OK)
             {
-                var reader = new StreamReader(responsestream, responseEncoding);
-                var result = reader.ReadToEnd();
+                var characterSet = ((HttpWebResponse)response).CharacterSet;
+                var responsestream = response.GetResponseStream();
+                var responseEncoding = characterSet == ""
+                   ? Encoding.UTF8
+                   : Encoding.GetEncoding(characterSet ?? "utf-8");
+                using (responsestream)
+                {
+                    var reader = new StreamReader(responsestream, responseEncoding);
+                    var result = reader.ReadToEnd();
 
-                //deserialize 
-                JObject json = JObject.Parse(result);
-                orders =
-                    from token in json["data"]
-                    select (string)token["order_id"];
+                    //deserialize 
+                    JObject json = JObject.Parse(result);
+                    decimal code = (decimal)json["meta"]["code"];
+                    if (code == 200)
+                    {
+                        orders =
+                            from token in json["data"]
+                            select (string)token["order_id"];
+                    }
+                }
             }
             return orders;
         }
