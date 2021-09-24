@@ -30,6 +30,8 @@ namespace BLAPI3
 
             //pdf filename
             string filename = "\\list" + DateTime.Now.ToString("_MM_dd") + ".pdf";
+            // create directory if it is not exist yet
+            Directory.CreateDirectory(Properties.Settings.Default.FilesPath);
             string path = Properties.Settings.Default.FilesPath + filename;
             FileStream fs = new FileStream(path, FileMode.Create);
 
